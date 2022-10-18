@@ -2,7 +2,7 @@ from typing import List, Union, Tuple
 
 import torch
 from tqdm import tqdm
-from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from transformers.file_utils import PaddingStrategy
 from transformers.generation_utils import BeamSearchEncoderDecoderOutput
 from transformers.models.m2m_100.modeling_m2m_100 import shift_tokens_right
@@ -24,9 +24,9 @@ class M2M100Model(TranslationModel):
                  model_name_or_path: str = "facebook/m2m100_418M",
                  device=None,
                  ):
-        self.tokenizer = M2M100Tokenizer.from_pretrained(model_name_or_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.model_name_or_path = model_name_or_path
-        self.model = M2M100ForConditionalGeneration.from_pretrained(model_name_or_path)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
         if device is not None:
             self.model = self.model.to(device)
         self.model.config.max_length = max(self.model.config.max_length, self.model.config.max_position_embeddings - 4)
@@ -39,10 +39,22 @@ class M2M100Model(TranslationModel):
         return True
 
     def _set_src_lang(self, src_lang: str):
+        try:
+            _ = self.tokenizer.lang_code_to_id[src_lang]
+        except KeyError:
+            raise KeyError(
+                f"Language {src_lang} not found in tokenizer. Available languages: {self.tokenizer.lang_code_to_id.keys()}"
+            )
         self.src_lang = src_lang
         self.tokenizer.src_lang = src_lang
 
     def _set_tgt_lang(self, tgt_lang: str):
+        try:
+            _ = self.tokenizer.lang_code_to_id[tgt_lang]
+        except KeyError:
+            raise KeyError(
+                f"Language {tgt_lang} not found in tokenizer. Available languages: {self.tokenizer.lang_code_to_id.keys()}"
+            )
         self.tgt_lang = tgt_lang
         self.tokenizer.tgt_lang = tgt_lang
 

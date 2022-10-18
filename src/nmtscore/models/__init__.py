@@ -211,12 +211,9 @@ def load_translation_model(name: str, **kwargs) -> TranslationModel:
     """
     Convenience function to load a :class: TranslationModel using a shorthand name of the model
     """
-    if name == "m2m100_418M":
+    if "m2m100" in name or "nllb" in name:
         from nmtscore.models.m2m100 import M2M100Model
-        translation_model = M2M100Model(model_name_or_path="facebook/m2m100_418M", **kwargs)
-    elif name == "m2m100_1.2B":
-        from nmtscore.models.m2m100 import M2M100Model
-        translation_model = M2M100Model(model_name_or_path="facebook/m2m100_1.2B", **kwargs)
+        translation_model = M2M100Model(model_name_or_path=name, **kwargs)
     elif name == "prism":
         try:
             import fairseq
