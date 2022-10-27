@@ -177,7 +177,7 @@ class TranslationModel:
     def _translate(self,
                    source_sentences: List[str],
                    return_score: bool = False,
-                   batch_size: int = 8,
+                   batch_size: int = 32,
                    **kwargs,
                    ) -> Union[List[str], List[Tuple[str, float]]]:
         raise NotImplementedError
