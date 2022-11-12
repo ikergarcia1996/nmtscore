@@ -4,7 +4,7 @@ import torch
 from tqdm import tqdm
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from transformers.file_utils import PaddingStrategy
-from transformers.generation_utils import BeamSearchEncoderDecoderOutput
+from transformers.generation import BeamSearchEncoderDecoderOutput
 from transformers.models.m2m_100.modeling_m2m_100 import shift_tokens_right
 
 from nmtscore.models import TranslationModel
