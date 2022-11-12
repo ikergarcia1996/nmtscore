@@ -94,7 +94,7 @@ class M2M100Model(TranslationModel):
     def _score(self,
                source_sentences: List[str],
                hypothesis_sentences: List[str],
-               batch_size: int = 8,
+               batch_size: int = 32,
                **kwargs,
                ) -> List[float]:
         padding_strategy = PaddingStrategy.LONGEST if batch_size > 1 else PaddingStrategy.DO_NOT_PAD
