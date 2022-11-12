@@ -80,7 +80,7 @@ class PrismModel(TranslationModel):
         tokenized_source_sentences = [self.encode(sentence) for sentence in source_sentences]
         tokenized_hypothesis_sentences = [self.encode(sentence, prepend_target_id=True) for sentence in hypothesis_sentences]
         for batch in tqdm(self._build_batches(tokenized_source_sentences, tokenized_hypothesis_sentences, skip_invalid_size_inputs=False),
-                          disable=len(source_sentences) / self.args.batch_size < 10):
+                          disable=len(source_sentences) / self.args.batch_size < 10,desc="Scoring with Prism"):
             if self.device is not None:  # must be a better way
                 batch['id'] = batch['id'].cuda()
                 batch['net_input']['src_tokens'] = batch['net_input']['src_tokens'].to(self.device)

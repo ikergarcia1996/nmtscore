@@ -1,5 +1,6 @@
 from typing import List, Union, Tuple
 
+import os
 import torch
 from tqdm import tqdm
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
@@ -20,16 +21,19 @@ class M2M100Model(TranslationModel):
     (https://huggingface.co/docs/transformers/model_doc/m2m_100).
     """
 
-    def __init__(self,
-                 model_name_or_path: str = "facebook/m2m100_418M",
-                 device=None,
-                 ):
+    def __init__(
+        self,
+        model_name_or_path: str = "facebook/m2m100_418M",
+        device=None,
+    ):
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.model_name_or_path = model_name_or_path
         self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name_or_path)
         if device is not None:
             self.model = self.model.to(device)
-        self.model.config.max_length = max(self.model.config.max_length, self.model.config.max_position_embeddings - 4)
+        self.model.config.max_length = max(
+            self.model.config.max_length, self.model.config.max_position_embeddings - 4
+        )
 
     def __str__(self):
         return self.model_name_or_path
@@ -59,18 +63,25 @@ class M2M100Model(TranslationModel):
         self.tokenizer.tgt_lang = tgt_lang
 
     @torch.no_grad()
-    def _translate(self,
-                   source_sentences: List[str],
-                   return_score: bool = False,
-                   batch_size: int = 32,
-                   num_beams: int = 5,
-                   **kwargs,
-                   ) -> Union[List[str], List[Tuple[str, float]]]:
-        padding_strategy = PaddingStrategy.LONGEST if batch_size > 1 else PaddingStrategy.DO_NOT_PAD
+    def _translate(
+        self,
+        source_sentences: List[str],
+        return_score: bool = False,
+        batch_size: int = 32,
+        num_beams: int = 5,
+        **kwargs,
+    ) -> Union[List[str], List[Tuple[str, float]]]:
+        padding_strategy = (
+            PaddingStrategy.LONGEST if batch_size > 1 else PaddingStrategy.DO_NOT_PAD
+        )
         translations = []
-        for src_sentences in tqdm(list(batch(source_sentences, batch_size)), disable=len(source_sentences) / batch_size < 10):
-            inputs = self.tokenizer._batch_encode_plus(src_sentences, return_tensors="pt",
-                                                       padding_strategy=padding_strategy)
+        for src_sentences in tqdm(
+            list(batch(source_sentences, batch_size)),
+            disable=len(source_sentences) / batch_size < 10,
+        ):
+            inputs = self.tokenizer._batch_encode_plus(
+                src_sentences, return_tensors="pt", padding_strategy=padding_strategy
+            )
             inputs = inputs.to(self.model.device)
             model_output: BeamSearchEncoderDecoderOutput = self.model.generate(
                 **inputs,
@@ -80,7 +91,9 @@ class M2M100Model(TranslationModel):
                 output_scores=return_score,
                 **kwargs,
             )
-            batch_translations = self.tokenizer.batch_decode(model_output.sequences, skip_special_tokens=True)
+            batch_translations = self.tokenizer.batch_decode(
+                model_output.sequences, skip_special_tokens=True
+            )
             if return_score:
                 # Does not match our score method output for some reason; need to investigate further
                 # scores = (2 ** model_output.sequences_scores).tolist()
@@ -91,28 +104,49 @@ class M2M100Model(TranslationModel):
         return translations
 
     @torch.no_grad()
-    def _score(self,
-               source_sentences: List[str],
-               hypothesis_sentences: List[str],
-               batch_size: int = 32,
-               **kwargs,
-               ) -> List[float]:
-        padding_strategy = PaddingStrategy.LONGEST if batch_size > 1 else PaddingStrategy.DO_NOT_PAD
+    def _score(
+        self,
+        source_sentences: List[str],
+        hypothesis_sentences: List[str],
+        batch_size: int = 32,
+        **kwargs,
+    ) -> List[float]:
+        padding_strategy = (
+            PaddingStrategy.LONGEST if batch_size > 1 else PaddingStrategy.DO_NOT_PAD
+        )
         scores = []
         batch_iterator = zip(
-            tqdm(batch(source_sentences, batch_size), disable=len(source_sentences) / batch_size < 10),
+            tqdm(
+                list(batch(source_sentences, batch_size)),desc=f"Scoring {os.path.basename(self.model_name_or_path)}",
+                disable=len(source_sentences) / batch_size < 10,
+            ),
             batch(hypothesis_sentences, batch_size),
         )
         for src_sentences, tgt_sentences in batch_iterator:
-            inputs = self.tokenizer._batch_encode_plus(src_sentences, return_tensors="pt", padding_strategy=padding_strategy)
+            inputs = self.tokenizer._batch_encode_plus(
+                src_sentences, return_tensors="pt", padding_strategy=padding_strategy
+            )
             with self.tokenizer.as_target_tokenizer():
                 # Hack: Append a second EOS token to make sure that one EOS is still there after shift_tokens_right
-                tgt_sentences = [f"{sentence} {self.tokenizer.eos_token}" for sentence in tgt_sentences]
-                labels = self.tokenizer._batch_encode_plus(tgt_sentences, return_tensors="pt", padding_strategy=padding_strategy)
+                tgt_sentences = [
+                    f"{sentence} {self.tokenizer.eos_token}"
+                    for sentence in tgt_sentences
+                ]
+                labels = self.tokenizer._batch_encode_plus(
+                    tgt_sentences,
+                    return_tensors="pt",
+                    padding_strategy=padding_strategy,
+                )
             inputs = inputs.to(self.model.device)
             labels = labels.to(self.model.device)
-            labels["input_ids"][labels["input_ids"] == self.tokenizer.pad_token_id] = -100
-            inputs["decoder_input_ids"] = shift_tokens_right(labels["input_ids"], self.tokenizer.pad_token_id, self.model.config.decoder_start_token_id)
+            labels["input_ids"][
+                labels["input_ids"] == self.tokenizer.pad_token_id
+            ] = -100
+            inputs["decoder_input_ids"] = shift_tokens_right(
+                labels["input_ids"],
+                self.tokenizer.pad_token_id,
+                self.model.config.decoder_start_token_id,
+            )
             output = self.model(**inputs)
             batch_scores = torch.zeros(len(src_sentences), device=self.model.device)
             for i in range(len(src_sentences)):
