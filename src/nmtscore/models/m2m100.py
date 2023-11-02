@@ -67,7 +67,7 @@ class M2M100Model(TranslationModel):
         self,
         source_sentences: List[str],
         return_score: bool = False,
-        batch_size: int = 32,
+        batch_size: int = 8,
         num_beams: int = 5,
         **kwargs,
     ) -> Union[List[str], List[Tuple[str, float]]]:
@@ -108,7 +108,7 @@ class M2M100Model(TranslationModel):
         self,
         source_sentences: List[str],
         hypothesis_sentences: List[str],
-        batch_size: int = 32,
+        batch_size: int = 8,
         **kwargs,
     ) -> List[float]:
         padding_strategy = (
@@ -117,7 +117,8 @@ class M2M100Model(TranslationModel):
         scores = []
         batch_iterator = zip(
             tqdm(
-                list(batch(source_sentences, batch_size)),desc=f"Scoring {os.path.basename(self.model_name_or_path)}",
+                list(batch(source_sentences, batch_size)),
+                desc=f"Scoring {os.path.basename(self.model_name_or_path)}",
                 disable=len(source_sentences) / batch_size < 10,
             ),
             batch(hypothesis_sentences, batch_size),

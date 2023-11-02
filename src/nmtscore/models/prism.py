@@ -60,7 +60,7 @@ class PrismModel(TranslationModel):
     def _translate(self,
                    source_sentences: List[str],
                    return_score: bool = False,
-                   batch_size: int = 64,
+                   batch_size: int = 8,
                    beam=5,
                    verbose=False,
                    **kwargs,
@@ -72,7 +72,7 @@ class PrismModel(TranslationModel):
     def _score(self,
                source_sentences: List[str],
                hypothesis_sentences: List[str],
-               batch_size: int = 64,
+               batch_size: int = 8,
                **kwargs,
                ) -> List[float]:
         self.args.batch_size = batch_size
